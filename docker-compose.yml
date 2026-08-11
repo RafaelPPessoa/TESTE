@@ -26,7 +26,7 @@ services:
     container_name: yazaki-n8n-app
     environment:
       DB_TYPE: postgresdb
-      DB_POSTGRE_HOST: postgres
+      DB_POSTGRE_HOST: 127.0.0.1
       DB_POSTGRE_PORT: 5432
       DB_POSTGRE_DATABASE: ${DB_NAME:-n8n}
       DB_POSTGRE_USER: ${DB_USER:-n8n}
