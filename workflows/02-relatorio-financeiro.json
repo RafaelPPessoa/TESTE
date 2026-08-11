@@ -1,0 +1,65 @@
+{
+  "name": "02 - Relatório Financeiro Diário",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "every",
+        "unit": "hours",
+        "value": 24
+      },
+      "id": "schedule-diario",
+      "name": "Schedule (Todo dia 08:00)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  data: new Date().toLocaleDateString('pt-BR'),\n  timestamp: new Date().toISOString(),\n  resumo: {\n    total_pedidos: 10,\n    valor_total: 'R$ 123.450,00',\n    valor_medio: 'R$ 12.345,00',\n    por_status: {\n      confirmados: 7,\n      processando: 2,\n      pendentes: 1\n    }\n  }\n};"
+      },
+      "id": "formatar-relatorio",
+      "name": "Formatar Relatório",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "subject": "📊 Relatório Financeiro - {{ $node[\"Formatar Relatório\"].output.first().json.data }}",
+        "toEmail": "financeiro@yazaki.com.br",
+        "textContent": "Relatório Diário de Pedidos\\n\\nData: {{ $node[\"Formatar Relatório\"].output.first().json.data }}\\n\\nTotal de Pedidos: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.total_pedidos }}\\nValor Total: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.valor_total }}\\nValor Médio: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.valor_medio }}\\n\\nPor Status:\\n- Confirmados: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.por_status.confirmados }}\\n- Processando: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.por_status.processando }}\\n- Pendentes: {{ $node[\"Formatar Relatório\"].output.first().json.resumo.por_status.pendentes }}"
+      },
+      "id": "email-financeiro",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [500, 200]
+    }
+  ],
+  "connections": {
+    "Schedule (Todo dia 08:00)": {
+      "main": [
+        [
+          {
+            "node": "Formatar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Relatório": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

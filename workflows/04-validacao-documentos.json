@@ -1,0 +1,130 @@
+{
+  "name": "04 - Validação e Arquivamento de Documentos",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "documento",
+        "method": "POST",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-documento",
+      "name": "Webhook (Upload)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { tipo, nome_arquivo, cliente_id } = $input.first().body;\n\nconst tipos_validos = ['NF', 'RG', 'CPF', 'Contrato', 'CNAE'];\nconst extensoes_validas = ['.pdf', '.jpg', '.png'];\n\nconst tem_extensao = extensoes_validas.some(ext => nome_arquivo.toLowerCase().endsWith(ext));\nconst tipo_valido = tipos_validos.includes(tipo);\n\nreturn {\n  isValid: tem_extensao && tipo_valido,\n  tipo: tipo || 'Desconhecido',\n  nome_arquivo,\n  cliente_id: cliente_id || null,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "validar-documento",
+      "name": "Validar Documento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "{{ $node[\"Validar Documento\"].output.first().json.isValid }}",
+              "operator": "equals",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-valido-doc",
+      "name": "É válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simula OCR/extração de dados\nconst tipo = $node[\"Validar Documento\"].output.first().json.tipo;\n\nlet campos_extraidos = {};\n\nif (tipo === 'NF') {\n  campos_extraidos = { numero: '2024-001', valor: '1500.00', data: '2024-08-11' };\n} else if (tipo === 'RG') {\n  campos_extraidos = { nome: 'João Silva', cpf: '123.456.789-00', valido: true };\n} else if (tipo === 'Contrato') {\n  campos_extraidos = { tipo_contrato: 'Fornecimento', vigencia: '24 meses' };\n}\n\nreturn {\n  campos_extraidos,\n  confianca_extracao: 0.95,\n  status: 'processado'\n};"
+      },
+      "id": "extrair-campos",
+      "name": "Extrair Campos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "content": "✓ Documento {{ $node[\"Validar Documento\"].output.first().json.nome_arquivo }} processado com sucesso!\\n\\nTipo: {{ $node[\"Validar Documento\"].output.first().json.tipo }}\\nStatus: Arquivado\\nConfiança: {{ $node[\"Extrair Campos\"].output.first().json.confianca_extracao }}"
+      },
+      "id": "resposta-doc-ok",
+      "name": "Resposta (OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 50]
+    },
+    {
+      "parameters": {
+        "content": "❌ Documento {{ $node[\"Validar Documento\"].output.first().json.nome_arquivo }} inválido\\n\\nForneça um arquivo PDF/JPG com tipo válido (NF, RG, Contrato, etc)"
+      },
+      "id": "resposta-doc-erro",
+      "name": "Resposta (Erro)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 250]
+    }
+  ],
+  "connections": {
+    "Webhook (Upload)": {
+      "main": [
+        [
+          {
+            "node": "Validar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Documento": {
+      "main": [
+        [
+          {
+            "node": "É válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É válido?": {
+      "main": [
+        [
+          {
+            "node": "Extrair Campos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta (Erro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Campos": {
+      "main": [
+        [
+          {
+            "node": "Resposta (OK)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

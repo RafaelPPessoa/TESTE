@@ -1,0 +1,109 @@
+{
+  "name": "01 - Processamento de Pedidos",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "novo-pedido",
+        "method": "POST",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-novo-pedido",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { cliente_id, numero_pedido, valor_total } = $input.first().body;\n\nconst errors = [];\nif (!numero_pedido) errors.push('numero_pedido obrigatório');\nif (!cliente_id) errors.push('cliente_id obrigatório');\nif (!valor_total || valor_total <= 0) errors.push('valor_total inválido');\n\nreturn {\n  isValid: errors.length === 0,\n  errors: errors,\n  cliente_id,\n  numero_pedido,\n  valor_total,\n  data_pedido: new Date().toISOString()\n};"
+      },
+      "id": "validacao-pedido",
+      "name": "Validação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "{{ $node[\"Validação\"].output.first().json.isValid }}",
+              "operator": "equals",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-valido",
+      "name": "É válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "content": "✓ Pedido {{ $node[\"Validação\"].output.first().json.numero_pedido }} recebido com sucesso!\n\nValor: R$ {{ $node[\"Validação\"].output.first().json.valor_total }}"
+      },
+      "id": "resposta-sucesso",
+      "name": "Resposta Webhook (Sucesso)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "content": "❌ Erro ao processar pedido:\n\n{{ $node[\"Validação\"].output.first().json.errors.join(', ') }}"
+      },
+      "id": "resposta-erro",
+      "name": "Resposta Webhook (Erro)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validação": {
+      "main": [
+        [
+          {
+            "node": "É válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É válido?": {
+      "main": [
+        [
+          {
+            "node": "Resposta Webhook (Sucesso)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta Webhook (Erro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

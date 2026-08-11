@@ -1,0 +1,105 @@
+{
+  "name": "05 - Sincronização de Colaboradores RH",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "every",
+        "unit": "hours",
+        "value": 6
+      },
+      "id": "schedule-6h",
+      "name": "Schedule (A cada 6h)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simula busca de dados da API RH\nreturn {\n  colaboradores: [\n    { full_name: 'João Silva', document_id: '123.456.789-00', email: 'joao@yazaki.com', department: 'Operações', position: 'Gerente', hire_date: '2020-01-15', status: 'ATIVO' },\n    { full_name: 'Maria Santos', document_id: '234.567.890-11', email: 'maria@yazaki.com', department: 'Financeiro', position: 'Analista', hire_date: '2021-03-20', status: 'ATIVO' },\n    { full_name: 'Pedro Costa', document_id: '345.678.901-22', email: 'pedro@yazaki.com', department: 'TI', position: 'Desenvolvedor', hire_date: '2022-06-10', status: 'ATIVO' }\n  ]\n};"
+      },
+      "id": "fetch-rh",
+      "name": "Buscar Dados RH",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const externos = $node[\"Buscar Dados RH\"].output.first().json.colaboradores;\n\nconst transformados = externos.map(c => ({\n  nome: c.full_name,\n  cpf: c.document_id,\n  email: c.email,\n  departamento: c.department,\n  cargo: c.position,\n  data_admissao: c.hire_date,\n  ativo: c.status === 'ATIVO'\n}));\n\nreturn { colaboradores: transformados, total: transformados.length };"
+      },
+      "id": "transformar-dados",
+      "name": "Transformar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const dados = $node[\"Transformar Dados\"].output.first().json;\n\nreturn {\n  novos_colaboradores: dados.total,\n  timestamp: new Date().toISOString(),\n  mensagem: `${dados.total} colaborador(es) sincronizado(s) com sucesso`\n};"
+      },
+      "id": "resumo-sincronizacao",
+      "name": "Resumo Sincronização",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "content": "✓ Sincronização RH Concluída\\n\\n{{ $node[\"Resumo Sincronização\"].output.first().json.novos_colaboradores }} colaborador(es) processado(s)\\n\\nData: {{ $node[\"Resumo Sincronização\"].output.first().json.timestamp }}"
+      },
+      "id": "notificacao-sucesso",
+      "name": "Notificação Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [900, 200]
+    }
+  ],
+  "connections": {
+    "Schedule (A cada 6h)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Dados RH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Dados RH": {
+      "main": [
+        [
+          {
+            "node": "Transformar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transformar Dados": {
+      "main": [
+        [
+          {
+            "node": "Resumo Sincronização",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo Sincronização": {
+      "main": [
+        [
+          {
+            "node": "Notificação Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

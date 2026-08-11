@@ -1,0 +1,130 @@
+{
+  "name": "03 - Aprovação de Compras com IA",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "compra",
+        "method": "POST",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-compra",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { fornecedor_id, valor, categoria } = $input.first().body;\n\nreturn {\n  fornecedor_id,\n  valor,\n  categoria,\n  timestamp: new Date().toISOString(),\n  historico_fornecedor: fornecedor_id === 1 ? '5+ compras anteriores, taxa 98% sucesso' : 'Fornecedor novo'\n};"
+      },
+      "id": "preparar-dados",
+      "name": "Preparar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 200]
+    },
+    {
+      "parameters": {
+        "prompt": "Você é um assistente de aprovação de compras da Yazaki.\\n\\nAnalize esta requisição de compra e decida automaticamente:\\n\\nFornecedor ID: {{ $node[\"Preparar Dados\"].output.first().json.fornecedor_id }}\\nValor: R$ {{ $node[\"Preparar Dados\"].output.first().json.valor }}\\nCategoria: {{ $node[\"Preparar Dados\"].output.first().json.categoria }}\\nHistórico: {{ $node[\"Preparar Dados\"].output.first().json.historico_fornecedor }}\\n\\nRegras:\\n- APROVAR se valor <= R$ 5.000\\n- APROVAR se valor <= R$ 10.000 E fornecedor confiável\\n- REJEITAR se valor > R$ 50.000 OU fornecedor novo\\n\\nResponda em JSON: { \\\"status\\\": \\\"aprovado\\\" ou \\\"rejeitado\\\", \\\"motivo\\\": \\\"...\\\", \\\"confianca\\\": 0.0-1.0 }"
+      },
+      "id": "ai-agent",
+      "name": "IA Agent (Decisão)",
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{ $node[\"IA Agent (Decisão)\"].output.first().json.status }}",
+              "operator": "contains",
+              "value2": "aprovado"
+            }
+          ]
+        }
+      },
+      "id": "if-aprovado",
+      "name": "Foi Aprovado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "content": "✓ Compra APROVADA!\\n\\nFornecedor: {{ $node[\"Preparar Dados\"].output.first().json.fornecedor_id }}\\nValor: R$ {{ $node[\"Preparar Dados\"].output.first().json.valor }}\\nMotivo: {{ $node[\"IA Agent (Decisão)\"].output.first().json.motivo }}"
+      },
+      "id": "resposta-aprovada",
+      "name": "Resposta (Aprovado)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 100]
+    },
+    {
+      "parameters": {
+        "content": "❌ Compra REJEITADA\\n\\nFornecedor: {{ $node[\"Preparar Dados\"].output.first().json.fornecedor_id }}\\nValor: R$ {{ $node[\"Preparar Dados\"].output.first().json.valor }}\\nMotivo: {{ $node[\"IA Agent (Decisão)\"].output.first().json.motivo }}\\n\\nPrecisa de aprovação manual."
+      },
+      "id": "resposta-rejeitada",
+      "name": "Resposta (Rejeitado)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "IA Agent (Decisão)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA Agent (Decisão)": {
+      "main": [
+        [
+          {
+            "node": "Foi Aprovado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Foi Aprovado?": {
+      "main": [
+        [
+          {
+            "node": "Resposta (Aprovado)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta (Rejeitado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
