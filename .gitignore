@@ -1,0 +1,47 @@
+# Environment variables (não commitar com senhas reais)
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Sistema operacional
+Thumbs.db
+.DS_Store
+
+# n8n local
+.n8n/
+
+# Docker
+.docker/
+
+# Postgres data (opcional - comentar se quiser versionamento)
+# postgres_data/
+
+# Backup files
+*.backup
+*.bak
+*.sql.gz
+
+# Arquivos temporários
+tmp/
+temp/
+*.tmp
+
+# Arquivos de lock do Docker
+docker-compose.lock
